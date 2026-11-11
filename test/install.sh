@@ -1,8 +1,8 @@
 #!/bin/sh
 # install.sh <base> <version>: dromas installed from the repositories at
-# <base> as README.md § Install has it, in this container's distribution, as
-# root, then dromas version checked to print <version>. The repo file names
-# https://packages.dromas.dev, which a test's <base> replaces.
+# <base> as dromas-client's README § Install has it, in this container's
+# distribution, as root, then dromas version checked to print <version>. The
+# repo file names https://packages.dromas.dev, which a test's <base> replaces.
 set -eu
 base=$1
 version=$2

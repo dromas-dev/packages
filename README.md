@@ -9,50 +9,13 @@ and arm64.
 
 ## Install
 
-Each format's key is checked against this page, read on GitHub, never against
-the host it vouches for: § The keys.
-
-### Debian and Ubuntu
-
-```sh
-sudo install -d -m 0755 /etc/apt/keyrings
-sudo curl -fsSL https://packages.dromas.dev/dromas.asc -o /etc/apt/keyrings/dromas.asc
-gpg --show-keys /etc/apt/keyrings/dromas.asc
-sudo tee /etc/apt/sources.list.d/dromas.sources > /dev/null <<'EOF'
-Types: deb
-URIs: https://packages.dromas.dev/deb
-Suites: stable
-Components: main
-Signed-By: /etc/apt/keyrings/dromas.asc
-EOF
-sudo apt update
-sudo apt install dromas
-```
-
-### Fedora, RHEL, AlmaLinux, Rocky Linux
-
-```sh
-sudo curl -fsSL https://packages.dromas.dev/rpm/stable/dromas.repo -o /etc/yum.repos.d/dromas.repo
-sudo dnf install dromas
-```
-
-dnf prints the key's fingerprint as it imports it; answer yes only if it is
-the GPG key's below.
-
-### Alpine
-
-```sh
-wget -qO /etc/apk/keys/dromas-packages.rsa.pub https://packages.dromas.dev/dromas-packages.rsa.pub
-sha256sum /etc/apk/keys/dromas-packages.rsa.pub
-echo https://packages.dromas.dev/apk/stable >> /etc/apk/repositories
-apk add dromas
-```
+[dromas-client's README § Linux, from packages.dromas.dev](https://github.com/dromas-dev/dromas-client#linux-from-packagesdromasdev) has the commands for each format. Each checks the format's key against § The keys, read on GitHub, never against the host it vouches for.
 
 ## The keys
 
 | File | Key | Signs | Check |
 |---|---|---|---|
-| [`keys/dromas.asc`](keys/dromas.asc), served as `/dromas.asc` | GPG, RSA 4096, `Dromas packages <dtype@dtype.org>`, expires 2028-11-10 | apt's `Release` (`InRelease`, `Release.gpg`), each `.rpm`, each `repomd.xml` (`repomd.xml.asc`) | fingerprint `ED32 6F51 D394 BA2D 5EE1  CFC7 2608 D731 31C7 9706` |
+| [`keys/dromas.asc`](keys/dromas.asc), served as `/dromas.asc` | GPG, RSA 4096, `Dromas packages <dtype@dtype.org>`, expires 2028-11-10 | apt's `Release` (`InRelease`, `Release.gpg`), each `.rpm`, each `repomd.xml` (`repomd.xml.asc`) | fingerprint `ED32 6F51 D394 BA2D 5EE1  CFC7 2608 D731 31C7 9706`; SHA-256 of the file `38d2f415f06f2ec109c9db13708d04ba5c3289d5ceea89c3952fa9ddf4c54850` |
 | [`keys/dromas-packages.rsa.pub`](keys/dromas-packages.rsa.pub), served as `/dromas-packages.rsa.pub` | RSA 4096 | each `APKINDEX.tar.gz` | SHA-256 of the file `74abfdd4fd70d7aeaac1e742a41b7403a813cd3657565b938b94cdddde1d7c38` |
 
 ## What is served
@@ -81,8 +44,9 @@ after a client release:
    repository's signature, made once: the rpms of the image last pushed carry
    forward, and only a new release's are signed.
 3. The [`Dockerfile`](Dockerfile) copies the tree into NGINX's unprivileged
-   image. [`test/install.sh`](test/install.sh) installs `dromas` from it, as §
-   Install has it, in Debian, Ubuntu, Fedora, AlmaLinux and Alpine containers.
+   image. [`test/install.sh`](test/install.sh) installs `dromas` from it, as
+   dromas-client's README has it, in Debian, Ubuntu, Fedora, AlmaLinux and
+   Alpine containers.
 4. On `main`, the image is pushed to `ghcr.io/dromas-dev/dromas-packages`, for
    amd64 and arm64, with an attestation of its build:
 
