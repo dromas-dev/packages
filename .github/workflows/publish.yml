@@ -1,0 +1,158 @@
+# packages.dromas.dev's apt, dnf and apk repositories, as the image
+# ghcr.io/dromas-dev/dromas-packages: scripts/fetch.sh takes the .deb, .rpm
+# and .apk files of dromas-dev/dromas-client's newest releases, each checked
+# against its attestation; scripts/build.sh signs and indexes them, as the
+# GitHub CLI's deployment workflow does for deb and rpm and Alpine's tools do
+# for apk; the image (Dockerfile) is built for this runner and tested by
+# test/install.sh in a container of each distribution, then, on main, built
+# for amd64 and arm64 and pushed with an attestation of its build. On main the
+# keys are the environment sign's (it deploys from main alone), and the rpms
+# signed for the image last pushed carry forward; any other run signs with
+# keys made for the run, and pushes nothing. Actions are pinned by commit,
+# each with its release beside it.
+name: publish
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  IMAGE: ghcr.io/dromas-dev/dromas-packages
+  # How many of the client's newest releases with packages the repositories
+  # hold.
+  RELEASES: 5
+
+jobs:
+  publish:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    environment: ${{ github.ref == 'refs/heads/main' && 'sign' || '' }}
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
+      artifact-metadata: write
+    env:
+      MAIN: ${{ github.ref == 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: the tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends apt-utils rpm createrepo-c
+      - name: the releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/fetch.sh "$RELEASES" "$RUNNER_TEMP/in"
+      - name: the keys
+        # On main, the environment's, checked to be the ones keys/ publishes
+        # and README.md names; otherwise made for this run.
+        env:
+          GPG_KEY: ${{ github.ref == 'refs/heads/main' && secrets.GPG_KEY || '' }}
+          APK_KEY: ${{ github.ref == 'refs/heads/main' && secrets.APK_KEY || '' }}
+        run: |
+          umask 077
+          export GNUPGHOME=$RUNNER_TEMP/gnupg
+          keys=$RUNNER_TEMP/keys
+          mkdir -p "$GNUPGHOME" "$keys"
+          if [ "$MAIN" = true ]; then
+            printf '%s\n' "$GPG_KEY" | gpg --batch --quiet --import
+            printf '%s\n' "$APK_KEY" > "$keys/dromas-packages.rsa"
+          else
+            gpg --batch --quiet --passphrase '' --pinentry-mode loopback \
+              --quick-gen-key 'Dromas packages, a test run <test@invalid>' rsa4096 sign 1d
+            openssl genrsa -out "$keys/dromas-packages.rsa" 4096
+          fi
+          openssl rsa -in "$keys/dromas-packages.rsa" -pubout -out "$keys/dromas-packages.rsa.pub"
+          if [ "$MAIN" = true ]; then
+            fpr() { gpg --batch --with-colons "$@" | awk -F: '/^fpr/ { print $10; exit }'; }
+            [ "$(fpr --list-secret-keys)" = "$(fpr --show-keys keys/dromas.asc)" ]
+            cmp "$keys/dromas-packages.rsa.pub" keys/dromas-packages.rsa.pub
+          fi
+          echo "GNUPGHOME=$GNUPGHOME" >> "$GITHUB_ENV"
+          echo "APK_KEY=$keys/dromas-packages.rsa" >> "$GITHUB_ENV"
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        if: env.MAIN == 'true'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: the image last pushed, whose signed rpms carry forward
+        # None only while the package does not exist yet; any other failure
+        # to read it stops the run, which would otherwise sign every rpm again.
+        if: env.MAIN == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if docker pull -q "$IMAGE:main"; then
+            id=$(docker create "$IMAGE:main")
+            docker cp "$id:/srv/packages" "$RUNNER_TEMP/previous"
+            docker rm "$id"
+            echo "PREVIOUS=$RUNNER_TEMP/previous" >> "$GITHUB_ENV"
+          elif gh api orgs/dromas-dev/packages/container/dromas-packages 2>&1 | grep -q 'HTTP 404'; then
+            echo "no image pushed yet: every rpm is signed"
+          else
+            echo "::error::$IMAGE:main exists but could not be read"
+            exit 1
+          fi
+      - name: the tree
+        run: scripts/build.sh "$RUNNER_TEMP/in" tree
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=sha,format=long
+          labels: |
+            org.opencontainers.image.title=dromas-packages
+            org.opencontainers.image.description=packages.dromas.dev: apt, dnf and apk repositories of the dromas command. Apache-2.0.
+      # Docker's "test before push": the runner's own platform, loaded, then
+      # installed from in each distribution.
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          load: true
+          tags: dromas-packages:test
+      - name: test/install.sh in each distribution
+        run: |
+          docker network create packages-test
+          docker run -d --name packages --network packages-test --read-only --tmpfs /tmp dromas-packages:test
+          version=$(tail -n 1 "$RUNNER_TEMP/in/tags")
+          for image in debian:trixie ubuntu:26.04 fedora:45 almalinux:10 almalinux:9 alpine:3.24 alpine:3.22; do
+            echo "::group::$image"
+            docker run --rm --network packages-test -v "$PWD/test:/test:ro" "$image" sh /test/install.sh http://packages:8080 "$version"
+            echo "::endgroup::"
+          done
+      - id: push
+        if: env.MAIN == 'true'
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        if: env.MAIN == 'true'
+        with:
+          subject-name: ${{ env.IMAGE }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
