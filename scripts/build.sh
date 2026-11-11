@@ -22,6 +22,7 @@
 # dromas-packages.rsa.pub. Needs apt-ftparchive, rpmsign, createrepo_c, gpg
 # and docker, which runs the apk tools in Alpine.
 set -euo pipefail
+umask 022
 
 in=$(cd "$1" && pwd)
 mkdir -p "$2"
@@ -35,7 +36,7 @@ fpr=$(gpg --batch --with-colons --list-secret-keys | awk -F: '/^fpr/ { print $10
 	{ echo "APK_KEY: dromas-packages.rsa with its .pub beside it" >&2; exit 1; }
 
 gpg --batch --armor --export "$fpr" > "$out/dromas.asc"
-cp "$APK_KEY.pub" "$out/dromas-packages.rsa.pub"
+install -m 0644 "$APK_KEY.pub" "$out/dromas-packages.rsa.pub"
 
 # apt
 pool=$out/deb/pool/main/d/dromas
@@ -104,3 +105,8 @@ docker run --rm -v "$out/apk/stable:/apk" -v "$(dirname "$APK_KEY"):/keys:ro" "$
 		apk index --quiet --allow-untrusted -o APKINDEX.tar.gz *.apk
 		abuild-sign -q -t RSA256 -k /keys/dromas-packages.rsa APKINDEX.tar.gz
 	done'
+
+# nginx serves as its own user: every file is read by others, every directory
+# entered.
+unreadable=$(find "$out" \( -type f ! -perm -o+r \) -o \( -type d ! -perm -o+rx \))
+[ -z "$unreadable" ] || { echo "not readable by nginx:" >&2; echo "$unreadable" >&2; exit 1; }
