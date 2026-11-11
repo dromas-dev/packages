@@ -94,21 +94,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: the image last pushed, whose signed rpms carry forward
-        # None only while the package does not exist yet; any other failure
+        # None only where the registry has no such image; any other failure
         # to read it stops the run, which would otherwise sign every rpm again.
         if: env.MAIN == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
-          if docker pull -q "$IMAGE:main"; then
+          if out=$(docker pull -q "$IMAGE:main" 2>&1); then
             id=$(docker create "$IMAGE:main")
             docker cp "$id:/srv/packages" "$RUNNER_TEMP/previous"
             docker rm "$id"
             echo "PREVIOUS=$RUNNER_TEMP/previous" >> "$GITHUB_ENV"
-          elif gh api orgs/dromas-dev/packages/container/dromas-packages 2>&1 | grep -q 'HTTP 404'; then
+          elif [[ $out == *"$IMAGE:main: not found" ]]; then
             echo "no image pushed yet: every rpm is signed"
           else
-            echo "::error::$IMAGE:main exists but could not be read"
+            echo "$out"
+            echo "::error::$IMAGE:main could not be read"
             exit 1
           fi
       - name: the tree
