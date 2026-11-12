@@ -9,7 +9,7 @@ and arm64.
 
 ## Install
 
-[dromas-client's README § Linux, from packages.dromas.dev](https://github.com/dromas-dev/dromas-client#linux-from-packagesdromasdev) has the commands for each format. Each checks the format's key against § The keys, read on GitHub, never against the host it vouches for.
+[dromas-client's install pages](https://github.com/dromas-dev/dromas-client/tree/main/docs/install) have the commands for each format. Each checks the format's key against § The keys, read on GitHub, never against the host it vouches for.
 
 ## The keys
 
