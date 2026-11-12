@@ -28,7 +28,6 @@ in=$(cd "$1" && pwd)
 mkdir -p "$2"
 out=$(cd "$2" && pwd)
 repo=$(cd "$(dirname "$0")/.." && pwd)
-alpine=alpine:3.24
 
 fpr=$(gpg --batch --with-colons --list-secret-keys | awk -F: '/^fpr/ { print $10; exit }')
 [ -n "$fpr" ] || { echo "no secret key in GNUPGHOME" >&2; exit 1; }
@@ -98,8 +97,8 @@ for arch in x86_64 aarch64; do
 		cp "$file" "$dir/${name/_/-}.apk"
 	done
 done
-docker run --rm -v "$out/apk/stable:/apk" -v "$(dirname "$APK_KEY"):/keys:ro" "$alpine" sh -ec '
-	apk add -q abuild
+apk_image=$(docker build -q -f "$repo/scripts/apk-index.Dockerfile" "$repo/scripts")
+docker run --rm -v "$out/apk/stable:/apk" -v "$(dirname "$APK_KEY"):/keys:ro" "$apk_image" sh -ec '
 	for dir in /apk/*/; do
 		cd "$dir"
 		apk index --quiet --allow-untrusted -o APKINDEX.tar.gz *.apk

@@ -1,5 +1,5 @@
 # Dependency updates as pull requests: the actions publish.yml pins by commit,
-# and the Dockerfile's base image, a tag pinned by its index digest.
+# and the Dockerfiles' base images, each a tag pinned by its index digest.
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -16,7 +16,7 @@ updates:
       prefix: ci
 
   - package-ecosystem: docker
-    directory: /
+    directories: ["/", "/scripts"]
     schedule:
       interval: weekly
       day: monday
