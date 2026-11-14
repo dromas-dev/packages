@@ -22,12 +22,12 @@ and arm64.
 
 | Path | Format |
 |---|---|
-| `/deb/` | apt: suite `stable`, component `main`; `pool/` holds the `.deb` files |
+| `/deb/` | apt: suite `stable`, component `main`; `pool/` holds the `.deb` files, and `dromas.sources` the source |
 | `/rpm/stable/` | dnf: the `.rpm` files, `repodata/`, and `dromas.repo` |
 | `/apk/stable/<arch>/` | apk, for `x86_64` and `aarch64`: the `.apk` files and `APKINDEX.tar.gz` |
 
 A package is named by its version and never changes once served; the indexes,
-the repo file and the keys change with each release (`nginx.conf` sends each
+the repo and source files and the keys change with each release (`nginx.conf` sends each
 its `Cache-Control`).
 
 ## How it is built

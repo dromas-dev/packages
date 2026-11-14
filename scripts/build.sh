@@ -4,6 +4,7 @@
 #   deb/  apt: the .deb files in pool/, indexed by apt-ftparchive into
 #         dists/stable/main, its Release signed (InRelease and Release.gpg);
 #         a .deb is not signed itself, as Debian's are not.
+#         dromas.sources, the source apt reads (deb822).
 #   rpm/stable/  dnf: each .rpm signed (rpmsign --addsign), indexed by
 #         createrepo_c, repodata/repomd.xml signed (repomd.xml.asc), and
 #         dromas.repo.
@@ -87,6 +88,7 @@ done
 createrepo_c --quiet "$rpms"
 gpg --batch --yes --local-user "$fpr" --armor --detach-sign -o "$rpms/repodata/repomd.xml.asc" "$rpms/repodata/repomd.xml"
 cp "$repo/rpm/dromas.repo" "$rpms/dromas.repo"
+cp "$repo/deb/dromas.sources" "$out/deb/dromas.sources"
 
 # apk
 for arch in x86_64 aarch64; do
