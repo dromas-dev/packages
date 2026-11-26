@@ -23,7 +23,7 @@ and arm64.
 | Path | Format |
 |---|---|
 | `/deb/` | apt: suite `stable`, component `main`; `pool/` holds the `.deb` files, and `dromas.sources` the source |
-| `/rpm/stable/` | dnf: the `.rpm` files, `repodata/`, and `dromas.repo` |
+| `/rpm/stable/` | dnf and zypper: the `.rpm` files, `repodata/`, and `dromas.repo` |
 | `/apk/stable/<arch>/` | apk, for `x86_64` and `aarch64`: the `.apk` files and `APKINDEX.tar.gz` |
 
 A package is named by its version and never changes once served; the indexes,
@@ -45,8 +45,8 @@ after a client release:
    forward, and only a new release's are signed.
 3. The [`Dockerfile`](Dockerfile) copies the tree into NGINX's unprivileged
    image. [`test/install.sh`](test/install.sh) installs `dromas` from it, as
-   dromas-client's README has it, in Debian, Ubuntu, Fedora, AlmaLinux and
-   Alpine containers.
+   dromas-client's install pages have it, in a container of each release
+   those pages name as supported.
 4. On `main`, the image is pushed to `ghcr.io/dromas-dev/dromas-packages`, for
    amd64 and arm64, with an attestation of its build:
 

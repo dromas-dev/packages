@@ -135,7 +135,9 @@ jobs:
           docker network create packages-test
           docker run -d --name packages --network packages-test --read-only --tmpfs /tmp dromas-packages:test
           version=$(tail -n 1 "$RUNNER_TEMP/in/tags")
-          for image in debian:trixie ubuntu:26.04 fedora:45 almalinux:10 almalinux:9 alpine:3.24 alpine:3.22; do
+          # The releases dromas-client's install pages name as supported: the
+          # same list, each release its distribution still supports.
+          for image in debian:bookworm debian:trixie ubuntu:22.04 ubuntu:24.04 ubuntu:26.04 ubuntu:26.10 fedora:44 fedora:45 registry.access.redhat.com/ubi8/ubi registry.access.redhat.com/ubi9/ubi registry.access.redhat.com/ubi10/ubi almalinux:8 almalinux:9 almalinux:10 rockylinux/rockylinux:8 rockylinux/rockylinux:9 rockylinux/rockylinux:10 amazonlinux:2023 alpine:3.22 alpine:3.23 alpine:3.24 opensuse/leap:16.0 registry.suse.com/bci/bci-base:15.7 registry.suse.com/bci/bci-base:16.0; do
             echo "::group::$image"
             docker run --rm --network packages-test -v "$PWD/test:/test:ro" "$image" sh /test/install.sh http://packages:8080 "$version"
             echo "::endgroup::"
