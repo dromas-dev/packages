@@ -16,6 +16,9 @@ if command -v apt-get > /dev/null; then
 	curl -fsSL "$base/deb/dromas.sources" | sed "s|https://packages.dromas.dev|$base|" > /etc/apt/sources.list.d/dromas.sources
 	apt-get update -qq
 	apt-get install -y -qq dromas > /dev/null
+elif command -v zypper > /dev/null; then
+	curl -fsSL "$base/rpm/stable/dromas.repo" | sed "s|https://packages.dromas.dev|$base|" > /etc/zypp/repos.d/dromas.repo
+	zypper --non-interactive --gpg-auto-import-keys install dromas
 elif command -v dnf > /dev/null; then
 	curl -fsSL "$base/rpm/stable/dromas.repo" | sed "s|https://packages.dromas.dev|$base|" > /etc/yum.repos.d/dromas.repo
 	dnf install -y -q dromas
@@ -24,7 +27,7 @@ elif command -v apk > /dev/null; then
 	echo "$base/apk/stable" >> /etc/apk/repositories
 	apk add -q dromas
 else
-	echo "no apt-get, dnf or apk here" >&2
+	echo "no apt-get, zypper, dnf or apk here" >&2
 	exit 1
 fi
 
